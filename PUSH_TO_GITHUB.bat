@@ -3,7 +3,7 @@ title Push PS-025 to GitHub
 color 0B
 echo ==============================================================================
 echo       PS-025: PUSH TO GITHUB REPOSITORY
-echo       Target: https://github.com/muuthu916-maker/PS025-Industrial-AI.git
+echo       Target: https://github.com/kishoreprasathss555-prog/PS025-Industrial-AI.git
 echo ==============================================================================
 echo.
 set GIT="C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\git\cmd\git.exe"
@@ -19,7 +19,7 @@ echo.
 echo.
 if %ERRORLEVEL% EQU 0 (
     echo [SUCCESS] PS-025 project successfully uploaded to GitHub!
-    echo Visit: https://github.com/muuthu916-maker/PS025-Industrial-AI
+    echo Visit: https://github.com/kishoreprasathss555-prog/PS025-Industrial-AI
 ) else (
     echo [ERROR] Push encountered an issue. Please verify your GitHub login or token.
 )
