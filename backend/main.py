@@ -15,8 +15,8 @@ import hashlib
 import base64
 import time
 from datetime import datetime, timedelta
+from app.simulator import generate_sensor_reading
 from app.ml import model_instance
-
 # Path configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
@@ -240,6 +240,9 @@ async def api_health(request):
         "database": db_type,
         "timestamp": datetime.utcnow().isoformat()
     })
+async def api_simulator_readings(request):
+    reading = generate_sensor_reading()
+    return JSONResponse(reading)
 
 async def api_login(request):
     try:
@@ -351,6 +354,7 @@ async def api_export_csv(request):
 
 routes = [
     Route("/health", api_health, methods=["GET"]),
+    Route("/api/simulator/readings", api_simulator_readings, methods=["GET"]),
     Route("/api/auth/login", api_login, methods=["POST"]),
     Route("/api/auth/me", api_me, methods=["GET"]),
     Route("/api/predictions/predict", api_predict, methods=["POST"]),

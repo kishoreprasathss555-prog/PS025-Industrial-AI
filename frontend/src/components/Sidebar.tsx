@@ -14,6 +14,7 @@ const NAV = [
   { to: '/maintenance', label: 'Maintenance', icon: CalendarClock },
   { to: '/optimization', label: 'Optimization', icon: Zap },
   { to: '/alerts', label: 'Alerts', icon: Bell },
+  { to: '/simulator', label: 'Virtual ESP32', icon: Activity },
 ]
 
 export default function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {

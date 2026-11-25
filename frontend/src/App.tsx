@@ -9,6 +9,7 @@ import PredictionsPage from './pages/Predictions'
 import MaintenancePage from './pages/Maintenance'
 import OptimizationPage from './pages/Optimization'
 import AlertsPage from './pages/Alerts'
+import SimulatorPage from './pages/Simulator'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth()
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="optimization" element={<OptimizationPage />} />
             <Route path="alerts" element={<AlertsPage />} />
+            <Route path="simulator" element={<SimulatorPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
