@@ -5,18 +5,16 @@ import clsx from 'clsx'
 import api from '../api/client'
 
 const FEATURE_IMPORTANCE = [
-  { name: 'Tool Wear', value: 28.4 },
-  { name: 'Operating Time', value: 22.1 },
-  { name: 'Cutting Temp', value: 16.8 },
-  { name: 'Vibration', value: 12.5 },
-  { name: 'Cutting Force', value: 9.3 },
-  { name: 'Feed Rate', value: 5.7 },
-  { name: 'Spindle Speed', value: 3.2 },
-  { name: 'Power', value: 2.0 },
+  { name: 'Tool Wear', value: 58.7 },
+  { name: 'Operating Time', value: 31.0 },
+  { name: 'Cutting Temp', value: 5.5 },
+  { name: 'Vibration', value: 3.1 },
+  { name: 'Cutting Force', value: 0.3 },
+  { name: 'Feed Rate', value: 0.3 },
+  { name: 'Spindle Speed', value: 0.7 },
+  { name: 'Power', value: 0.3 },
 ]
-
-const MODEL_METRICS = { mae: 8.4, rmse: 11.2, r2: 0.891 }
-
+const MODEL_METRICS = { mae: 5.82, rmse: 7.32, r2: 0.9719 }
 const DEFAULT_INPUT = {
   toolType: 'End Mill', toolId: 'TL-001',
   spindleSpeed: 4500, feedRate: 850, depthOfCut: 2.5,
@@ -58,14 +56,13 @@ export default function PredictionsPage() {
       const res = r.data
       setResult(res)
       setHistory(h => [{ ...res, ts: new Date().toLocaleTimeString('en-IN'), tool: inputs.toolType }, ...h.slice(0, 9)])
-    } catch {
-      // offline fallback
-      await new Promise(resolve => setTimeout(resolve, 900))
-      const res = demoPredict(inputs)
-      setResult(res)
-      setHistory(h => [{ ...res, ts: new Date().toLocaleTimeString('en-IN'), tool: inputs.toolType }, ...h.slice(0, 9)])
+    } catch (error) {
+      console.error('Prediction API failed:', error)
+      setResult(null)
+      alert('Prediction server unavailable. Please check the backend server and try again.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [inputs])
 
   const exportHistory = () => {
@@ -207,7 +204,7 @@ export default function PredictionsPage() {
               {/* Model Metrics */}
               <div className="card">
                 <h4 className="font-semibold text-slate-200 mb-3 flex items-center gap-2">
-                  <Clock size={14} className="text-slate-400" />Model Performance Metrics <span className="sim-badge">DEMO MODEL</span>
+                  <Clock size={14} className="text-slate-400" />Model Performance Metrics <span className="sim-badge">RANDOM FOREST ML</span>
                 </h4>
                 <div className="grid grid-cols-3 gap-4">
                   {[
@@ -234,7 +231,7 @@ export default function PredictionsPage() {
 
           {/* Feature Importance */}
           <div className="card">
-            <h4 className="font-semibold text-slate-200 mb-4">Feature Importance <span className="sim-badge">DEMO MODEL</span></h4>
+            <h4 className="font-semibold text-slate-200 mb-4">Feature Importance <span className="sim-badge">RANDOM FOREST ML</span></h4>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={FEATURE_IMPORTANCE} layout="vertical" margin={{ left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e3356" />

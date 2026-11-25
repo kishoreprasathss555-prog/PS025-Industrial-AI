@@ -1,47 +1,139 @@
+from pathlib import Path
+
+import joblib
 import numpy as np
+import pandas as pd
+
+
+# Load the trained Random Forest model
+MODEL_PATH = Path(__file__).with_name("ps025_tool_life_model.joblib")
+
+if not MODEL_PATH.exists():
+    raise FileNotFoundError(
+        f"Trained model not found: {MODEL_PATH}"
+    )
+
+trained_model = joblib.load(MODEL_PATH)
+
 
 class PredictiveToolLifeModel:
     """
-    Industrial Tool Life Degradation & Remaining Useful Life (RUL) Model.
-    All outputs are labelled as SIMULATED for Hackathon demonstration.
+    PS-025 Tool Life Prediction Model.
+
+    RUL is predicted using a trained Random Forest model.
+    Training data is synthetic and results are for demonstration only.
     """
+
     def __init__(self):
-        self.metrics = {"mae": 8.4, "rmse": 11.2, "r2": 0.891}
-        self.feature_importance = [
-            {"name": "Tool Wear", "value": 28.4},
-            {"name": "Operating Time", "value": 22.1},
-            {"name": "Cutting Temp", "value": 16.8},
-            {"name": "Vibration", "value": 12.5},
-            {"name": "Cutting Force", "value": 9.3},
-            {"name": "Feed Rate", "value": 5.7},
-            {"name": "Spindle Speed", "value": 3.2},
-            {"name": "Power Consumption", "value": 2.0},
+        self.metrics = {
+            "mae": 5.82,
+            "rmse": 7.32,
+            "r2": 0.9719,
+        }
+
+        feature_names = [
+            "tool_wear",
+            "operating_time",
+            "cutting_temp",
+            "vibration",
+            "cutting_force",
+            "feed_rate",
+            "spindle_speed",
+            "power_consumption",
         ]
 
+        friendly_names = [
+            "Tool Wear",
+            "Operating Time",
+            "Cutting Temp",
+            "Vibration",
+            "Cutting Force",
+            "Feed Rate",
+            "Spindle Speed",
+            "Power Consumption",
+        ]
+
+        importance = getattr(
+            trained_model, "feature_importances_", None
+        )
+
+        if importance is not None:
+            self.feature_importance = [
+                {
+                    "name": name,
+                    "value": round(float(value) * 100, 1),
+                }
+                for name, value in zip(friendly_names, importance)
+            ]
+        else:
+            self.feature_importance = []
+
     def predict(self, params: dict) -> dict:
-        wear = float(params.get("toolWear", params.get("tool_wear", 20)))
-        time_hours = float(params.get("operatingTime", params.get("operating_time", 48)))
-        temp = float(params.get("cuttingTemp", params.get("cutting_temp", 70)))
-        vibration = float(params.get("vibration", 0.4))
-        spindle_rpm = float(params.get("spindleSpeed", params.get("spindle_speed", 4500)))
 
-        # Multi-factor empirical degradation calculation
-        temp_factor = min(temp / 150.0, 1.0)
-        vib_factor = min(vibration / 1.0, 1.0)
-        speed_factor = min(spindle_rpm / 10000.0, 1.0)
-        time_factor = min(time_hours / 300.0, 1.0)
+        # Read frontend inputs (camelCase and snake_case supported)
+        def get_value(camel, snake, default):
+            value = params.get(camel, params.get(snake, default))
+            return float(default if value is None else value)
 
-        degradation = (
-            wear * 0.40 +
-            time_factor * 100 * 0.30 +
-            temp_factor * 100 * 0.15 +
-            vib_factor * 100 * 0.10 +
-            speed_factor * 100 * 0.05
-        ) / 100.0
+        wear = get_value("toolWear", "tool_wear", 20)
+        operating_time = get_value(
+            "operatingTime", "operating_time", 48
+        )
+        temp = get_value("cuttingTemp", "cutting_temp", 70)
+        vibration = get_value("vibration", "vibration", 0.4)
+        cutting_force = get_value(
+            "cuttingForce", "cutting_force", 1850
+        )
+        feed_rate = get_value("feedRate", "feed_rate", 850)
+        spindle_speed = get_value(
+            "spindleSpeed", "spindle_speed", 4500
+        )
+        power = get_value(
+            "powerConsumption", "power_consumption", 14.2
+        )
 
-        rul = max(5, round(280 * (1.0 - min(degradation, 0.95))))
-        health = max(5, round(100.0 - (wear * 0.90) - (time_factor * 20.0)))
-        fail_prob = min(98, round((wear * 0.75) + (vib_factor * 20.0) + (temp_factor * 15.0)))
+        # Keep the exact column order used during training
+        input_data = pd.DataFrame(
+            [[
+                wear,
+                operating_time,
+                temp,
+                vibration,
+                cutting_force,
+                feed_rate,
+                spindle_speed,
+                power,
+            ]],
+            columns=[
+                "tool_wear",
+                "operating_time",
+                "cutting_temp",
+                "vibration",
+                "cutting_force",
+                "feed_rate",
+                "spindle_speed",
+                "power_consumption",
+            ],
+        )
+
+        # Random Forest predicts Remaining Useful Life
+        rul = float(trained_model.predict(input_data)[0])
+        rul = int(np.clip(round(rul), 5, 280))
+
+        # Health and failure risk are demo estimates, not ML predictions
+        temp_factor = min(max(temp / 150.0, 0.0), 1.0)
+        vib_factor = min(max(vibration / 1.0, 0.0), 1.0)
+        time_factor = min(max(operating_time / 300.0, 0.0), 1.0)
+
+        health = max(
+            5,
+            min(100, round(100 - wear * 0.90 - time_factor * 20))
+        )
+
+        fail_prob = min(
+            98,
+            max(0, round(wear * 0.75 + vib_factor * 20 + temp_factor * 15))
+        )
 
         if fail_prob > 70:
             risk = "critical"
@@ -52,17 +144,19 @@ class PredictiveToolLifeModel:
         else:
             risk = "low"
 
-        wear_est = round(wear + (5.0 * degradation), 1)
+        degradation = max(0, min(1, 1 - rul / 280))
+        wear_estimate = round(wear + 5 * degradation, 1)
 
         return {
-            "rul": int(rul),
+            "rul": rul,
             "health_percentage": int(health),
             "failure_probability": int(fail_prob),
             "risk_level": risk,
-            "wear_estimate": float(wear_est),
+            "wear_estimate": float(wear_estimate),
             "is_simulated": True,
             "confidence": 0.74,
             "metrics": self.metrics,
         }
+
 
 model_instance = PredictiveToolLifeModel()
